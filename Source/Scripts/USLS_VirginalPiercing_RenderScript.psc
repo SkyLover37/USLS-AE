@@ -1,6 +1,7 @@
 Scriptname USLS_VirginalPiercing_RenderScript extends UD_CustomVibratorBase_RenderScript  
 
 import UnforgivingDevicesMain
+USLS_MCM Property USLSMCM auto
 
 Armor[] Property USLS_Suits Auto
 
@@ -14,6 +15,8 @@ int CumSoundInstance
 EffectShader[] Property USLSShader auto
 EffectShader ChosenShader
 Sound ChosenSound
+
+Keyword Property CeleneSuit auto
 
 ;TextureSet Property USLSPiercingNormalTXST auto
 ;TextureSet Property USLSPiercingGlowTXST auto
@@ -142,6 +145,7 @@ float Function getAccesibility()
 EndFunction
 
 Function OnVibrationStart()
+    UD_ArousalMult = USLSMCM.VibeMultiply
     if !getWearer().wornhaskeyword(libs.zad_deviousSuit) && TrialRunning == 0
         TrialRunning = 1
         if getWearer() == Game.GetPlayer()
@@ -157,6 +161,7 @@ Function OnVibrationStart()
         loc_i = Utility.RandomInt(1,CumForMe.length)
         loc_sound = CumForMe[loc_i - 1]
         CumSoundInstance = loc_sound.Play(getWearer())
+        Sound.SetInstanceVolume(CumSoundInstance, USLSMCM.SoundsVolume)
         loc_i = Utility.RandomInt(1,USLSShader.length)
         ChosenShader = USLSShader[loc_i - 1]
         ChosenShader.Play(getWearer())
@@ -199,6 +204,7 @@ EndFunction
 Function OnOrgasmPost(bool sexlab = false) ;called on wearer orgasm. Is only called if OnOrgasmPre returns true. Is only called if wearer is registered
     ;parent.OnOrgasmPost(sexlab)
     if TrialRunning
+        libs.StopVibrating(getWearer())
         Sound.StopInstance(CumSoundInstance)
         ChosenShader.Stop(getWearer())
         TrialRunning = 0
@@ -297,6 +303,12 @@ Function ManifestBondage (Actor akActor)
     endif
 EndFunction
 
+Function activateDevice() ;Device custom activate effect. You need to create it yourself. Don't forget to remove parent.activateDevice() if you don't want parent effect
+    if !getWearer().wornhaskeyword(CeleneSuit)
+        parent.activateDevice()
+    endif
+EndFunction
+
 ;============================================================================================================================
 ;unused override function, theese are from base script. Extending different script means you also have to add their overrride functions                                                
 ;theese function should be on every object instance, as not having them may cause multiple function calls to default class
@@ -304,9 +316,6 @@ EndFunction
 ;============================================================================================================================
 Function safeCheck() ;called on init. Should be used to check if some properties are not filled, and fill them
     parent.safeCheck()
-EndFunction
-Function activateDevice() ;Device custom activate effect. You need to create it yourself. Don't forget to remove parent.activateDevice() if you don't want parent effect
-    parent.activateDevice()
 EndFunction
 bool Function canBeActivated() ;Switch. Used to determinate if device can be currently activated
     return parent.canBeActivated()

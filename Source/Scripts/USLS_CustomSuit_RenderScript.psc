@@ -2,14 +2,16 @@ Scriptname USLS_CustomSuit_RenderScript extends UD_CustomDevice_RenderScript
 
 import UnforgivingDevicesMain
 
+USLS_MCM Property USLSMCM auto
 Armor[] Property ListParts auto
 Keyword[] Property ListKeywords auto
 int Willpower = 0
 int Property WillpowerIncrease = 10 auto
 string Property SuitName = "SoulSuit" auto
 float Property ActivationPeriod = 0.25 auto ; activation period in game days, 0.25 equals to 6 hours
+float Property ActivationPeriodMin = 0.05 auto ; minimal time between activations in game days, 0.04 roughly equals to 1 hour
 float ActivationTimePassed = 0.0 ; how much game days passed since last activation
-float Property TrialPeriod = 0.05 auto ; trial duration in days 0.04 roughly equals to 1 hour
+float Property TrialPeriod = 0.05 auto ; trial duration in days 0.04, roughly equals to 1 hour
 Message[] Property ActivationMSG auto
 bool TrialRunning
 Sound[] Property CumForMe auto
@@ -22,12 +24,15 @@ Sound ChosenSound
 String[] Property TrialMessage auto
 GlobalVariable Property SuitVariable auto
 bool Property ConstantEffect = false auto
+Armor[] Property KindredSouls auto
+float Property KindredSoulsChance = 0.50 auto ; chance for some Kindred Soul to be applied instead of simple relock, 0.5 = 50%
 
 Function InitPost()
     UD_DeviceType = "Suit"
     TrialRunning = false
     AddParts()
-    SuitVariable.SetValue(1)
+    ;SuitVariable.SetValue(1)
+    SuitActivate()
     ;RegisterForModEvent("USLS_TrialEnd","OnTrialEnd")
 EndFunction
 
@@ -104,14 +109,14 @@ EndFunction
 Function OnUpdatePost(float timePassed) ;called on update. Is only called if wearer is registered
     parent.OnUpdatePost(timePassed)
     ActivationTimePassed = ActivationTimePassed + timePassed
-    if !TrialRunning
+    if !TrialRunning && !libs.IsAnimating(getWearer()) && (ActivationTimePassed > ActivationPeriodMin)
         float loc_ActivationChance
         loc_ActivationChance = ActivationTimePassed / ActivationPeriod
         if Utility.randomFloat(0,1) < loc_ActivationChance
             ActivationTimePassed = 0.0
             SuitActivate()
         endif
-    else
+    elseif TrialRunning
         if ActivationTimePassed >= TrialPeriod
             Sound.StopInstance(CumSoundInstance)
             ChosenShader.Stop(getWearer())
@@ -122,7 +127,25 @@ Function OnUpdatePost(float timePassed) ;called on update. Is only called if wea
             endif
             SuitVariable.SetValue(0)
             UnlockParts()
-            unlockRestrain()
+            if KindredSouls.Length > 0
+                KindredSoulsChance = USLSMCM.KindredSoulsChance
+                int loc_i
+                float loc_rnd
+                loc_rnd = Utility.RandomFloat(0,1)
+                if loc_rnd < KindredSoulsChance
+                    loc_i = Utility.RandomInt(1,KindredSouls.Length)
+                    if getWearer() == Game.GetPlayer()
+                        UDmain.Print("But suddenly another soul grabs your body!")
+                    else 
+                        UDmain.Print("But suddenly another soul grabs " + getWearer().GetName() + "'s body!")
+                    endif    
+                    libs.SwapDevices(getWearer(),KindredSouls[loc_i - 1], libs.zad_DeviousSuit, true)
+                else
+                    unlockRestrain()
+                endif
+            else
+                unlockRestrain()
+            endif
         endif
     endif
 EndFunction
@@ -156,6 +179,7 @@ Function SuitActivate()
         loc_i = Utility.RandomInt(1,CumForMe.length)
         loc_sound = CumForMe[loc_i - 1]
         CumSoundInstance = loc_sound.Play(getWearer())
+        Sound.SetInstanceVolume(CumSoundInstance, USLSMCM.SoundsVolume)
         loc_i = Utility.RandomInt(1,USLSShader.length)
         ChosenShader = USLSShader[loc_i - 1]
         ChosenShader.Play(getWearer())
